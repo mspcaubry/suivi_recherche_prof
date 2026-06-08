@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Tableau de Bord Professeur – Suivi Entreprises BAC Pro</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg: #0b1120;
+            --surface: #111827;
+            --surface-2: #1f2937;
+            --surface-3: #111827;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --primary: #60a5fa;
+            --primary-light: #3b82f6;
+            --success: #22c55e;
+            --success-light: #166534;
+            --danger: #ef4444;
+            --danger-light: #991b1b;
+            --warning: #f59e0b;
+            --warning-light: #b45309;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --font: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* HEADER */
+        header {
+            background: #111827;
+            color: var(--text);
+            padding: 16px 16px 12px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+        }
+
+        header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        header p {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 2px;
+            color: var(--text-muted);
+        }
+
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        /* NAV TABS */
+        .tabs {
+            display: flex;
+            background: #111827;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            position: sticky;
+            top: 68px;
+            z-index: 99;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 4px;
+            background: none;
+            border: none;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* SECTIONS */
+        .section {
+            display: none;
+            padding: 16px;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        /* CARDS */
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 14px;
+            box-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title .icon {
+            font-size: 18px;
+        }
+
+        /* FORM */
+        .field {
+            margin-bottom: 14px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        select,
+        textarea {
+            width: 100%;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 10px 12px;
+            font-size: 15px;
+            font-family: var(--font);
+            color: var(--text);
+            background: var(--surface-2);
+            outline: none;
+            transition: border 0.2s;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: var(--primary);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* UPLOAD ZONE */
+        .upload-zone {
+            border: 2px dashed rgba(148, 163, 184, 0.4);
+            border-radius: var(--radius-sm);
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            background: var(--surface-2);
+            transition: border 0.2s;
+            position: relative;
+            color: var(--text-muted);
+        }
+
+        .upload-zone:hover {
+            border-color: var(--primary);
+        }
+
+        .upload-zone input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* BOUTONS */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            border-radius: var(--radius-sm);
+            border: none;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+            font-family: var(--font);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 1.5px solid var(--primary);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 8px 14px;
+            font-size: 13px;
+            width: auto;
+            display: inline-block;
+            border-radius: var(--radius-sm);
+        }
+
+        /* TABLE */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            background: var(--surface);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 1px 8px rgba(0, 0, 0, 0.30);
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .data-table th {
+            background: var(--surface-2);
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .data-table td {
+            color: var(--text-muted);
+        }
+
+        .data-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* STATS */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            text-align: center;
+            box-shadow: 0 1px 8px rgba(0, 0, 0, 0.20);
+        }
+
+        .stat-card .num {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            display: block;
+        }
+
+        .stat-card .lbl {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* ELEVE LIST */
+        .eleve-item {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.20);
+            cursor: pointer;
+            transition: box-shadow 0.2s;
+            border-left: 4px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .eleve-item:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.30);
+        }
+
+        .eleve-nom {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .eleve-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* TOAST */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #111827;
+            color: var(--text);
+            padding: 11px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 999;
+            transition: transform 0.3s;
+            white-space: nowrap;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 200;
+            overflow-y: auto;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal {
+            background: var(--surface);
+            width: 90%;
+            max-width: 500px;
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.50);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text);
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        /* PROGRESS */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--surface-2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        .info-banner {
+            background: rgba(59, 130, 246, 0.12);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            font-size: 13px;
+            color: var(--primary);
+            margin-bottom: 14px;
+            line-height: 1.5;
+        }
+
+        /* CARTE */
+        #prof-map {
+            height: 520px;
+            border-radius: var(--radius-sm);
+            background: var(--surface-2);
+        }
+
+        .map-filters {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .map-pill {
+            padding: 6px 14px;
+            border-radius: 14px;
+            border: 1.5px solid var(--border);
+            font-size: 12px;
+            background: var(--surface-2);
+            cursor: pointer;
+            font-family: var(--font);
+            color: var(--text-muted);
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .map-pill.active {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        .map-legend {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .map-legend span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .map-eleve-filter {
+            width: 100%;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 9px 12px;
+            font-size: 14px;
+            font-family: var(--font);
+            color: var(--text);
+            background: var(--surface-2);
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+            margin-bottom: 12px;
+        }
+
+        .map-stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .map-stat {
+            background: var(--surface);
+            border-radius: var(--radius-sm);
+            padding: 10px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .map-stat .n { font-size: 22px; font-weight: 800; color: var(--primary); }
+        .map-stat .l { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+        /* Popup Leaflet dark theme */
+        .leaflet-popup-content-wrapper {
+            background: #1f2937;
+            color: #e2e8f0;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .leaflet-popup-tip { background: #1f2937; }
+        .leaflet-popup-content { font-size: 13px; line-height: 1.5; margin: 10px 14px; }
+        .popup-nom { font-weight: 700; font-size: 14px; color: #60a5fa; margin-bottom: 4px; }
+        .popup-badge {
+            display: inline-block; padding: 2px 8px; border-radius: 10px;
+            font-size: 11px; font-weight: 600; margin: 3px 0;
+        }
+        .popup-badge.positive { background: rgba(34,197,94,0.2); color: #4ade80; }
+        .popup-badge.negative { background: rgba(239,68,68,0.2); color: #f87171; }
+        .popup-badge.attente  { background: rgba(245,158,11,0.2); color: #fbbf24; }
+
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="header-row">
+            <div>
+                <h1>👨‍🏫 Tableau de Bord Professeur</h1>
+                <p>Suivi Entreprises – BAC Pro</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('dashboard',this)">📊 Tableau de bord</button>
+        <button class="tab-btn" onclick="switchTab('import',this)">📥 Importer</button>
+        <button class="tab-btn" onclick="switchTab('eleves',this)">👥 Élèves</button>
+        <button class="tab-btn" onclick="switchTab('export',this)">📤 Exporter</button>
+        <button class="tab-btn" onclick="switchTab('carte',this)">🗺 Carte</button>
+    </div>
+
+    <!-- ==================== DASHBOARD ==================== -->
+    <div id="tab-dashboard" class="section active">
+        <div class="stats-grid" id="stats-grid">
+            <!-- Stats will be populated by JavaScript -->
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">📋</span> Derniers imports</div>
+            <div id="recent-imports">
+                <p style="color: var(--text-muted); text-align: center; padding: 20px;">Aucun import récent</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== IMPORT ==================== -->
+    <div id="tab-import" class="section">
+        <div class="info-banner">
+            📁 Importez les fichiers JSON exportés par vos élèves. Vous pouvez soit les ajouter à la base globale, soit
+            les associer à un élève spécifique.
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">📤</span> Importer des fiches</div>
+            <div class="field">
+                <label>Mode d'import</label>
+                <select id="import-mode" onchange="toggleImportMode()">
+                    <option value="global">Ajouter à la base globale</option>
+                    <option value="eleve">Associer à un élève</option>
+                </select>
+            </div>
+
+            <div id="eleve-selection" style="display: none;">
+                <div class="field">
+                    <label>Sélectionner un élève</label>
+                    <select id="selected-eleve">
+                        <option value="">-- Choisir un élève --</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Ou créer un nouvel élève</label>
+                    <input type="text" id="new-eleve-nom" placeholder="Prénom et Nom">
+                    <input type="text" id="new-eleve-classe" placeholder="Classe (ex: Terminale BAC Pro MELEC)"
+                        style="margin-top: 8px;">
+                </div>
+            </div>
+
+            <div class="upload-zone" id="upload-zone">
+                <div style="font-size:32px">📂</div>
+                <p>Cliquez pour sélectionner des fichiers JSON<br><small>Vous pouvez sélectionner plusieurs
+                        fichiers</small></p>
+                <input type="file" id="file-input" accept=".json" multiple onchange="handleFileSelection(event)">
+            </div>
+
+            <div id="file-list" style="margin-top: 16px; display: none;">
+                <div class="card-title" style="font-size: 14px; margin-bottom: 8px;">Fichiers sélectionnés :</div>
+                <div id="selected-files"></div>
+            </div>
+
+            <button class="btn btn-primary" onclick="processImport()" id="import-btn"
+                style="margin-top: 16px; display: none;">
+                🚀 Importer les fichiers
+            </button>
+        </div>
+
+        <div class="card" id="import-progress" style="display: none;">
+            <div class="card-title"><span class="icon">⚡</span> Progression de l'import</div>
+            <div id="progress-details"></div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== ELEVE ==================== -->
+    <div id="tab-eleves" class="section">
+        <div class="card">
+            <div class="card-title"><span class="icon">➕</span> Ajouter un élève</div>
+            <div class="field">
+                <label>Prénom et Nom</label>
+                <input type="text" id="add-eleve-nom" placeholder="Ex: Marie Dupont">
+            </div>
+            <div class="field">
+                <label>Classe</label>
+                <input type="text" id="add-eleve-classe" placeholder="Ex: Terminale BAC Pro MELEC">
+            </div>
+            <button class="btn btn-success" onclick="addEleve()">➕ Ajouter l'élève</button>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">👥</span> Liste des élèves</div>
+            <div id="eleves-list">
+                <p style="color: var(--text-muted); text-align: center; padding: 20px;">Aucun élève enregistré</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== EXPORT ==================== -->
+    <div id="tab-export" class="section">
+        <div class="info-banner">
+            📊 Exportez toutes les données agrégées sous forme de fichier Excel. Chaque élève aura sa propre feuille.
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">📊</span> Statistiques globales</div>
+            <div class="stats-grid" id="export-stats">
+                <!-- Export stats will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">📋</span> Aperçu des données</div>
+            <div style="overflow-x: auto;">
+                <table class="data-table" id="preview-table">
+                    <thead>
+                        <tr>
+                            <th>Élève</th>
+                            <th>Entreprise</th>
+                            <th>Adresse</th>
+                            <th>Contact</th>
+                            <th>Statut</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="preview-body">
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--text-muted);">Aucune donnée à
+                                afficher</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <button class="btn btn-success" onclick="exportToExcel()" id="export-excel-btn">
+            📊 Exporter vers Excel
+        </button>
+
+        <div style="margin-top: 16px;">
+            <button class="btn btn-danger" onclick="confirmClearAll()">🗑 Effacer toutes les données</button>
+        </div>
+    </div>
+
+
+    <!-- ==================== CARTE ==================== -->
+    <div id="tab-carte" class="section">
+
+        <div class="map-stats-row" id="map-stats-row">
+            <div class="map-stat"><div class="n" id="ms-total">0</div><div class="l">Entreprises</div></div>
+            <div class="map-stat"><div class="n" id="ms-geo">0</div><div class="l">Géolocalisées</div></div>
+            <div class="map-stat"><div class="n" id="ms-pos" style="color:var(--success)">0</div><div class="l">Positives</div></div>
+            <div class="map-stat"><div class="n" id="ms-att" style="color:var(--warning)">0</div><div class="l">En attente</div></div>
+            <div class="map-stat"><div class="n" id="ms-neg" style="color:var(--danger)">0</div><div class="l">Négatives</div></div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+            <div class="card-title" style="margin-bottom:10px">🔍 Filtres</div>
+
+            <label style="margin-bottom:6px">Filtrer par élève</label>
+            <select class="map-eleve-filter" id="map-eleve-filter" onchange="renderMap()">
+                <option value="tous">Tous les élèves</option>
+            </select>
+
+            <div class="map-filters">
+                <button class="map-pill active" data-statut="tous"   onclick="setMapFilter('tous',this)">Toutes</button>
+                <button class="map-pill"        data-statut="En attente" onclick="setMapFilter('En attente',this)">⏳ En attente</button>
+                <button class="map-pill"        data-statut="Positive"   onclick="setMapFilter('Positive',this)">✅ Positives</button>
+                <button class="map-pill"        data-statut="Négative"   onclick="setMapFilter('Négative',this)">❌ Négatives</button>
+            </div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">
+            <div id="prof-map"></div>
+        </div>
+
+        <div class="map-legend">
+            <span><span class="legend-dot" style="background:#22c55e"></span> Réponse positive</span>
+            <span><span class="legend-dot" style="background:#f59e0b"></span> En attente</span>
+            <span><span class="legend-dot" style="background:#ef4444"></span> Réponse négative</span>
+            <span><span class="legend-dot" style="background:#94a3b8"></span> Non géolocalisée</span>
+        </div>
+
+        <p style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:right">
+            Tiles © <a href="https://www.openstreetmap.org/copyright" target="_blank" style="color:var(--primary)">OpenStreetMap</a>
+        </p>
+    </div>
+
+    <!-- ==================== MODAL ==================== -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <div class="modal-title" id="modal-title">Confirmation</div>
+            <div class="modal-body" id="modal-body">Êtes-vous sûr ?</div>
+            <div class="modal-actions">
+                <button class="btn btn-outline btn-sm" onclick="closeModal()">Annuler</button>
+                <button class="btn btn-primary btn-sm" id="modal-confirm">Confirmer</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ===== DATA =====
+        let globalData = JSON.parse(localStorage.getItem('prof_global_data') || '[]');
+        let eleves = JSON.parse(localStorage.getItem('prof_eleves') || '[]');
+
+        function saveData() {
+            localStorage.setItem('prof_global_data', JSON.stringify(globalData));
+            localStorage.setItem('prof_eleves', JSON.stringify(eleves));
+        }
+
+        // ===== TABS =====
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            if (btn) btn.classList.add('active');
+
+            if (tab === 'dashboard') updateDashboard();
+            if (tab === 'eleves') renderEleves();
+            if (tab === 'export') updateExportPreview();
+            if (tab === 'carte') { updateMapEleveFilter(); renderMap(); }
+        }
+
+        // ===== DASHBOARD =====
+        function updateDashboard() {
+            const totalEleves = eleves.length;
+            const totalFiches = globalData.length;
+            const totalEntreprises = [...new Set(globalData.map(f => f.nom))].length;
+            const fichesPositives = globalData.filter(f => f.statut === 'Positive').length;
+
+            document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card"><div class="num">${totalEleves}</div><div class="lbl">Élèves</div></div>
+    <div class="stat-card"><div class="num">${totalFiches}</div><div class="lbl">Fiches totales</div></div>
+    <div class="stat-card"><div class="num">${totalEntreprises}</div><div class="lbl">Entreprises</div></div>
+    <div class="stat-card"><div class="num">${fichesPositives}</div><div class="lbl">Réponses positives</div></div>
+  `;
+
+            // Recent imports
+            const recentImports = globalData.slice(-5).reverse();
+            const recentHtml = recentImports.length ?
+                recentImports.map(f => `
+      <div class="eleve-item">
+        <div class="eleve-nom">${f.nom}</div>
+        <div class="eleve-meta">${f.adresse || 'Adresse non spécifiée'} • ${f.date || 'Date inconnue'}</div>
+      </div>
+    `).join('') :
+                '<p style="color: var(--text-muted); text-align: center; padding: 20px;">Aucun import récent</p>';
+
+            document.getElementById('recent-imports').innerHTML = recentHtml;
+        }
+
+        // ===== IMPORT =====
+        function toggleImportMode() {
+            const mode = document.getElementById('import-mode').value;
+            document.getElementById('eleve-selection').style.display = mode === 'eleve' ? 'block' : 'none';
+            updateEleveSelect();
+        }
+
+        function updateEleveSelect() {
+            const select = document.getElementById('selected-eleve');
+            select.innerHTML = '<option value="">-- Choisir un élève --</option>';
+            eleves.forEach(eleve => {
+                select.innerHTML += `<option value="${eleve.id}">${eleve.nom} - ${eleve.classe}</option>`;
+            });
+        }
+
+        let selectedFiles = [];
+
+        function handleFileSelection(event) {
+            selectedFiles = Array.from(event.target.files);
+            const fileList = document.getElementById('selected-files');
+            const importBtn = document.getElementById('import-btn');
+
+            if (selectedFiles.length > 0) {
+                fileList.innerHTML = selectedFiles.map((file, index) => `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--surface-2); border-radius: 6px; margin-bottom: 4px;">
+        <span>${file.name}</span>
+        <button class="btn-sm" style="background: var(--danger); color: white; border: none;" onclick="removeFile(${index})">✕</button>
+      </div>
+    `).join('');
+                document.getElementById('file-list').style.display = 'block';
+                importBtn.style.display = 'block';
+            } else {
+                document.getElementById('file-list').style.display = 'none';
+                importBtn.style.display = 'none';
+            }
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            // Re-trigger file selection display
+            handleFileSelection({ target: { files: selectedFiles } });
+        }
+
+        async function processImport() {
+            const mode = document.getElementById('import-mode').value;
+            let eleveId = null;
+
+            if (mode === 'eleve') {
+                const selectedEleve = document.getElementById('selected-eleve').value;
+                const newEleveNom = document.getElementById('new-eleve-nom').value.trim();
+                const newEleveClasse = document.getElementById('new-eleve-classe').value.trim();
+
+                if (selectedEleve) {
+                    eleveId = selectedEleve;
+                } else if (newEleveNom && newEleveClasse) {
+                    const newEleve = {
+                        id: Date.now().toString(),
+                        nom: newEleveNom,
+                        classe: newEleveClasse,
+                        createdAt: new Date().toISOString()
+                    };
+                    eleves.push(newEleve);
+                    eleveId = newEleve.id;
+                    showToast('✅ Nouvel élève ajouté !');
+                } else {
+                    showToast('⚠️ Sélectionnez un élève ou créez-en un nouveau');
+                    return;
+                }
+            }
+
+            document.getElementById('import-progress').style.display = 'block';
+            const progressFill = document.getElementById('progress-fill');
+            const progressDetails = document.getElementById('progress-details');
+
+            let totalImported = 0;
+
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                progressDetails.textContent = `Import de ${file.name}...`;
+                progressFill.style.width = `${((i) / selectedFiles.length) * 100}%`;
+
+                try {
+                    const content = await readFileAsText(file);
+                    const data = JSON.parse(content);
+
+                    let fichesToImport = [];
+                    if (data.fiches) {
+                        fichesToImport = data.fiches;
+                    } else if (Array.isArray(data)) {
+                        fichesToImport = data;
+                    }
+
+                    // Add eleveId to each fiche if importing for specific eleve
+                    if (eleveId) {
+                        fichesToImport = fichesToImport.map(fiche => ({
+                            ...fiche,
+                            eleveId: eleveId,
+                            importedAt: new Date().toISOString()
+                        }));
+                    } else {
+                        fichesToImport = fichesToImport.map(fiche => ({
+                            ...fiche,
+                            importedAt: new Date().toISOString()
+                        }));
+                    }
+
+                    globalData.push(...fichesToImport);
+                    totalImported += fichesToImport.length;
+
+                } catch (error) {
+                    console.error('Erreur lors de l\'import:', error);
+                    showToast(`❌ Erreur avec ${file.name}`);
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 100)); // Small delay for UI
+            }
+
+            progressFill.style.width = '100%';
+            progressDetails.textContent = `Import terminé ! ${totalImported} fiches importées.`;
+
+            saveData();
+            showToast(`✅ Import réussi ! ${totalImported} fiches ajoutées.`);
+
+            // Reset form
+            selectedFiles = [];
+            document.getElementById('file-input').value = '';
+            document.getElementById('file-list').style.display = 'none';
+            document.getElementById('import-btn').style.display = 'none';
+            document.getElementById('new-eleve-nom').value = '';
+            document.getElementById('new-eleve-classe').value = '';
+
+            setTimeout(() => {
+                document.getElementById('import-progress').style.display = 'none';
+                progressFill.style.width = '0%';
+            }, 2000);
+        }
+
+        function readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsText(file);
+            });
+        }
+
+        // ===== ELEVE =====
+        function addEleve() {
+            const nom = document.getElementById('add-eleve-nom').value.trim();
+            const classe = document.getElementById('add-eleve-classe').value.trim();
+
+            if (!nom || !classe) {
+                showToast('⚠️ Remplissez tous les champs');
+                return;
+            }
+
+            const eleve = {
+                id: Date.now().toString(),
+                nom,
+                classe,
+                createdAt: new Date().toISOString()
+            };
+
+            eleves.push(eleve);
+            saveData();
+            renderEleves();
+            updateEleveSelect();
+
+            document.getElementById('add-eleve-nom').value = '';
+            document.getElementById('add-eleve-classe').value = '';
+            showToast('✅ Élève ajouté !');
+        }
+
+        function renderEleves() {
+            const list = document.getElementById('eleves-list');
+
+            if (eleves.length === 0) {
+                list.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">Aucun élève enregistré</p>';
+                return;
+            }
+
+            list.innerHTML = eleves.map(eleve => {
+                const fichesCount = globalData.filter(f => f.eleveId === eleve.id).length;
+                return `
+      <div class="eleve-item">
+        <div class="eleve-nom">${eleve.nom}</div>
+        <div class="eleve-meta">${eleve.classe} • ${fichesCount} fiche(s)</div>
+        <div style="margin-top: 8px;">
+          <button class="btn-sm" style="background: var(--danger); color: white; border: none;" onclick="deleteEleve('${eleve.id}')">🗑 Supprimer</button>
+        </div>
+      </div>
+    `;
+            }).join('');
+        }
+
+        function deleteEleve(id) {
+            if (!confirm('Supprimer cet élève et toutes ses fiches ?')) return;
+
+            eleves = eleves.filter(e => e.id !== id);
+            globalData = globalData.filter(f => f.eleveId !== id);
+            saveData();
+            renderEleves();
+            updateEleveSelect();
+            showToast('🗑 Élève et fiches supprimés');
+        }
+
+        // ===== EXPORT =====
+        function updateExportPreview() {
+            const totalEleves = eleves.length;
+            const totalFiches = globalData.length;
+            const totalEntreprises = [...new Set(globalData.map(f => f.nom))].length;
+            const fichesPositives = globalData.filter(f => f.statut === 'Positive').length;
+
+            document.getElementById('export-stats').innerHTML = `
+    <div class="stat-card"><div class="num">${totalEleves}</div><div class="lbl">Élèves</div></div>
+    <div class="stat-card"><div class="num">${totalFiches}</div><div class="lbl">Fiches totales</div></div>
+    <div class="stat-card"><div class="num">${totalEntreprises}</div><div class="lbl">Entreprises</div></div>
+    <div class="stat-card"><div class="num">${fichesPositives}</div><div class="lbl">Réponses positives</div></div>
+  `;
+
+            // Preview table
+            const tbody = document.getElementById('preview-body');
+
+            if (globalData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Aucune donnée à afficher</td></tr>';
+                return;
+            }
+
+            const previewData = globalData.slice(0, 10); // Show first 10 entries
+            tbody.innerHTML = previewData.map(fiche => {
+                const eleve = eleves.find(e => e.id === fiche.eleveId);
+                const eleveNom = eleve ? eleve.nom : 'Non assigné';
+                return `
+      <tr>
+        <td>${eleveNom}</td>
+        <td>${fiche.nom}</td>
+        <td>${fiche.adresse || '-'}</td>
+        <td>${fiche.moyen || '-'}</td>
+        <td>${fiche.statut || '-'}</td>
+        <td>${fiche.date || '-'}</td>
+      </tr>
+    `;
+            }).join('');
+
+            if (globalData.length > 10) {
+                tbody.innerHTML += `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); font-style: italic;">... et ${globalData.length - 10} autres fiches</td></tr>`;
+            }
+        }
+
+        function exportToExcel() {
+            if (globalData.length === 0) {
+                showToast('⚠️ Aucune donnée à exporter');
+                return;
+            }
+
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+
+            // Global summary sheet
+            const summaryData = [
+                ['Tableau de Bord Professeur - Suivi Entreprises'],
+                ['Date d\'export', new Date().toLocaleDateString('fr-FR')],
+                [''],
+                ['Statistiques globales'],
+                ['Nombre d\'élèves', eleves.length],
+                ['Nombre total de fiches', globalData.length],
+                ['Nombre d\'entreprises contactées', [...new Set(globalData.map(f => f.nom))].length],
+                ['Réponses positives', globalData.filter(f => f.statut === 'Positive').length],
+                ['Réponses négatives', globalData.filter(f => f.statut === 'Négative').length],
+                ['En attente', globalData.filter(f => f.statut === 'En attente').length],
+            ];
+
+            const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+            XLSX.utils.book_append_sheet(wb, wsSummary, 'Résumé');
+
+            // Sheet per eleve
+            eleves.forEach(eleve => {
+                const eleveFiches = globalData.filter(f => f.eleveId === eleve.id);
+
+                if (eleveFiches.length > 0) {
+                    const eleveData = [
+                        [`Fiches de ${eleve.nom} - ${eleve.classe}`],
+                        [''],
+                        ['Entreprise', 'Adresse', 'Téléphone', 'Email', 'Secteur', 'Date de contact', 'Moyen', 'Contact', 'Statut', 'Notes', 'Latitude', 'Longitude']
+                    ];
+
+                    eleveFiches.forEach(fiche => {
+                        eleveData.push([
+                            fiche.nom,
+                            fiche.adresse || '',
+                            fiche.tel || '',
+                            fiche.email || '',
+                            fiche.secteur || '',
+                            fiche.date || '',
+                            fiche.moyen || '',
+                            fiche.contactNom || '',
+                            fiche.statut || '',
+                            fiche.notes || '',
+                            fiche.lat || '',
+                            fiche.lon || ''
+                        ]);
+                    });
+
+                    const wsEleve = XLSX.utils.aoa_to_sheet(eleveData);
+                    XLSX.utils.book_append_sheet(wb, wsEleve, eleve.nom.substring(0, 31)); // Excel sheet name limit
+                }
+            });
+
+            // Global sheet with all data
+            const allData = [
+                ['Toutes les fiches - Vue globale'],
+                [''],
+                ['Élève', 'Entreprise', 'Adresse', 'Téléphone', 'Email', 'Secteur', 'Date de contact', 'Moyen', 'Contact', 'Statut', 'Notes', 'Latitude', 'Longitude']
+            ];
+
+            globalData.forEach(fiche => {
+                const eleve = eleves.find(e => e.id === fiche.eleveId);
+                const eleveNom = eleve ? `${eleve.nom} (${eleve.classe})` : 'Non assigné';
+
+                allData.push([
+                    eleveNom,
+                    fiche.nom,
+                    fiche.adresse || '',
+                    fiche.tel || '',
+                    fiche.email || '',
+                    fiche.secteur || '',
+                    fiche.date || '',
+                    fiche.moyen || '',
+                    fiche.contactNom || '',
+                    fiche.statut || '',
+                    fiche.notes || '',
+                    fiche.lat || '',
+                    fiche.lon || ''
+                ]);
+            });
+
+            const wsAll = XLSX.utils.aoa_to_sheet(allData);
+            XLSX.utils.book_append_sheet(wb, wsAll, 'Toutes les données');
+
+            // Save file
+            XLSX.writeFile(wb, `suivi_entreprises_prof_${new Date().toISOString().split('T')[0]}.xlsx`);
+            showToast('📊 Export Excel réussi !');
+        }
+
+        function confirmClearAll() {
+            showModal('Confirmation', '⚠️ Êtes-vous sûr de vouloir effacer TOUTES les données ? Cette action est irréversible.', () => {
+                globalData = [];
+                eleves = [];
+                saveData();
+                updateDashboard();
+                renderEleves();
+                updateExportPreview();
+                updateEleveSelect();
+                showToast('🗑 Toutes les données supprimées');
+            });
+        }
+
+        // ===== MODAL =====
+        function showModal(title, body, confirmCallback) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').textContent = body;
+            document.getElementById('modal-confirm').onclick = () => {
+                confirmCallback();
+                closeModal();
+            };
+            document.getElementById('modal').classList.add('open');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('open');
+        }
+
+        // ===== TOAST =====
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+
+        // ===== CARTE =====
+        let profMap = null;
+        let mapMarkers = [];
+        let mapFilterStatut = 'tous';
+
+        const MARKER_COLORS = {
+            'Positive':   '#22c55e',
+            'En attente': '#f59e0b',
+            'Négative':   '#ef4444',
+            'default':    '#94a3b8'
+        };
+
+        function makeMarkerIcon(color) {
+            return L.divIcon({
+                className: '',
+                html: '<div style="width:14px;height:14px;border-radius:50%;background:' + color + ';border:2px solid rgba(255,255,255,0.8);box-shadow:0 2px 6px rgba(0,0,0,0.5)"></div>',
+                iconSize: [14, 14],
+                iconAnchor: [7, 7],
+                popupAnchor: [0, -10]
+            });
+        }
+
+        function setMapFilter(statut, el) {
+            mapFilterStatut = statut;
+            document.querySelectorAll('.map-pill').forEach(p => p.classList.remove('active'));
+            el.classList.add('active');
+            renderMap();
+        }
+
+        function updateMapEleveFilter() {
+            const sel = document.getElementById('map-eleve-filter');
+            const current = sel.value;
+            sel.innerHTML = '<option value="tous">Tous les élèves</option>';
+            eleves.forEach(function(e) {
+                sel.innerHTML += '<option value="' + e.id + '">' + e.nom + ' (' + e.classe + ')</option>';
+            });
+            // Restaurer la sélection précédente si possible
+            if (current) sel.value = current;
+        }
+
+        function renderMap() {
+            // Initialiser la carte si pas encore fait
+            if (!profMap) {
+                profMap = L.map('prof-map', { zoomControl: true, attributionControl: false })
+                    .setView([46.6, 2.3], 6); // France entière
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19
+                }).addTo(profMap);
+            }
+
+            // Supprimer les marqueurs existants
+            mapMarkers.forEach(function(m) { profMap.removeLayer(m); });
+            mapMarkers = [];
+
+            // Récupérer les filtres actifs
+            var eleveFilter = document.getElementById('map-eleve-filter').value;
+
+            // Filtrer les fiches
+            var fiches = globalData.filter(function(f) {
+                if (!f.lat || !f.lng) return false; // pas de coordonnées
+                if (mapFilterStatut !== 'tous' && f.statut !== mapFilterStatut) return false;
+                if (eleveFilter !== 'tous' && f.eleveId !== eleveFilter) return false;
+                return true;
+            });
+
+            // Compter pour les stats
+            var total = globalData.filter(function(f) {
+                if (eleveFilter !== 'tous' && f.eleveId !== eleveFilter) return false;
+                return true;
+            }).length;
+            var geo   = fiches.length; // déjà filtré sur lat/lng
+            // Pour les stats on prend toutes les fiches géo sans filtre statut
+            var allGeo = globalData.filter(function(f) {
+                if (!f.lat || !f.lng) return false;
+                if (eleveFilter !== 'tous' && f.eleveId !== eleveFilter) return false;
+                return true;
+            });
+            document.getElementById('ms-total').textContent = total;
+            document.getElementById('ms-geo').textContent   = allGeo.length;
+            document.getElementById('ms-pos').textContent   = allGeo.filter(function(f){ return f.statut === 'Positive'; }).length;
+            document.getElementById('ms-att').textContent   = allGeo.filter(function(f){ return f.statut === 'En attente'; }).length;
+            document.getElementById('ms-neg').textContent   = allGeo.filter(function(f){ return f.statut === 'Négative'; }).length;
+
+            if (fiches.length === 0) {
+                setTimeout(function() { profMap.invalidateSize(); }, 100);
+                return;
+            }
+
+            var bounds = [];
+
+            fiches.forEach(function(f) {
+                var lat = parseFloat(f.lat);
+                var lng = parseFloat(f.lng || f.lon || 0);
+                if (isNaN(lat) || isNaN(lng)) return;
+
+                var color = MARKER_COLORS[f.statut] || MARKER_COLORS['default'];
+                var icon  = makeMarkerIcon(color);
+
+                // Trouver le nom de l'élève
+                var eleve = eleves.find(function(e) { return e.id === f.eleveId; });
+                var eleveNom = eleve ? eleve.nom : (f.eleveNom || '—');
+
+                // Badge couleur statut
+                var badgeCls = f.statut === 'Positive' ? 'positive' : f.statut === 'Négative' ? 'negative' : 'attente';
+                var emoji    = f.statut === 'Positive' ? '✅' : f.statut === 'Négative' ? '❌' : '⏳';
+
+                var popup = '<div class="popup-nom">' + (f.nom || '—') + '</div>'
+                    + (f.adresse ? '<div>📍 ' + f.adresse + '</div>' : '')
+                    + (f.tel     ? '<div>📞 ' + f.tel + '</div>' : '')
+                    + (f.secteur ? '<div>🔧 ' + f.secteur + '</div>' : '')
+                    + '<div style="margin-top:5px">'
+                    + '<span class="popup-badge ' + badgeCls + '">' + emoji + ' ' + f.statut + '</span>'
+                    + '</div>'
+                    + '<div style="margin-top:5px;font-size:11px;color:#94a3b8">👤 ' + eleveNom + '</div>'
+                    + (f.date ? '<div style="font-size:11px;color:#94a3b8">📅 ' + new Date(f.date).toLocaleDateString("fr-FR") + '</div>' : '')
+                    + '<div style="margin-top:6px">'
+                    + '<a href="https://www.google.com/maps/search/?api=1&query=' + lat + ',' + lng + '" target="_blank" style="font-size:11px;color:#60a5fa">🗺 Ouvrir dans Google Maps</a>'
+                    + '</div>';
+
+                var marker = L.marker([lat, lng], { icon: icon })
+                    .addTo(profMap)
+                    .bindPopup(popup, { maxWidth: 260 });
+
+                mapMarkers.push(marker);
+                bounds.push([lat, lng]);
+            });
+
+            // Ajuster la vue sur les marqueurs
+            if (bounds.length > 0) {
+                profMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+            }
+
+            setTimeout(function() { profMap.invalidateSize(); }, 150);
+        }
+
+        // ===== INIT =====
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDashboard();
+            updateEleveSelect();
+            updateExportPreview();
+        });
+    </script>
+</body>
+
+</html>
+</content>
+<parameter name="filePath">g:\Mon Drive\PFMP\tableau_bord_professeur.html
